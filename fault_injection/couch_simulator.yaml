@@ -1,0 +1,37 @@
+setup:
+  version: '3'
+  services:
+    node1:
+      image: couchdb:latest
+      network_mode: "none"
+      cap_add:
+      - NET_ADMIN
+      command: sleep 1000
+    node2:
+      image: couchdb:latest
+      network_mode: "none"
+      cap_add:
+        - NET_ADMIN
+      command: sleep 1000
+    node3:
+      image: couchdb:latest
+      network_mode: "none"
+      cap_add:
+      - NET_ADMIN
+      command: sleep 1000
+events:
+  event1:
+    do:
+      join:
+        container: ["node1", "node2", "node3"]
+        internal: True
+        mode: ring
+  event2:
+    dependOn: ["event1"]
+    commands:
+      - docker ps
+      - docker logs networksimulator_node1_1
+    cut:
+      container: ["node1", "node2"]
+    cut:
+      container: ["node1", "node3"]
