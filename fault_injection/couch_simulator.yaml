@@ -6,12 +6,10 @@ setup:
       network_mode: "none"
       cap_add:
       - NET_ADMIN
-      command: sleep 1000
       environment:
-        COUCHDB_PASSWORD: password
-        COUCHDB_USER: couch_db
-      ports:
-        - 5984:10001
+        - COUCHDB_USER=admin
+        - COUCHDB_PASSWORD=password
+      command: couchdb
       volumes:
         - couch1:/tmp/docker/couch1_data
     couch2:
@@ -19,12 +17,10 @@ setup:
       network_mode: "none"
       cap_add:
         - NET_ADMIN
-      command: sleep 1000
       environment:
-        COUCHDB_PASSWORD: password
-        COUCHDB_USER: couch_db
-      ports:
-        - 5984:10002
+        - COUCHDB_USER=admin
+        - COUCHDB_PASSWORD=password
+      command: couchdb
       volumes:
         - couch2:/tmp/docker/couch2_data
     couch3:
@@ -32,12 +28,10 @@ setup:
       network_mode: "none"
       cap_add:
       - NET_ADMIN
-      command: sleep 1000
       environment:
-        COUCHDB_PASSWORD: password
-        COUCHDB_USER: couch_db
-      ports:
-        - 5984:10003
+        - COUCHDB_USER=admin
+        - COUCHDB_PASSWORD=password
+      command: couchdb
       volumes:
         - couch3:/tmp/docker/couch3_data
 
@@ -46,18 +40,32 @@ setup:
     couch2:
     couch3:
 events:
-  event1:
+  # couchdb:latest docker containers have cluster mode enabled by default
+  # joining couchdbs as ring, so isolating later on is easy
+  # running internal: True to run the experiment isolated
+  join_couches:
     do:
       join:
         container: ["couch1", "couch2", "couch3"]
         internal: True
         mode: ring
-  event2:
-    dependOn: ["event1"]
+  scan:
+    dependOn: ["join_couches"]
     commands:
       - docker ps
-      - docker logs networksimulator_couch1_1
-      - curl http://127.0.0.1:10001/
+      - docker inspect --format='{{json .NetworkSettings.Networks}}' $(docker ps -aqf name="couch1") >> couch1_networks.json
+      # install with sudo apt install jq or sudo snap install jq
+      # TODO get network name
+      - sed 's/,$//' couch1_networks.json | jq -s '.[] | .[] | .["IPAddress"]'
+      - rm couch1_networks.json
+    # docker_exec:
+    #   container: couch1
+    #   commands:
+    #     - 'curl -X POST -H "Content-Type: application/json" http://admin:password@localhost:5984/_cluster_setup -d ''{"action": "enable_cluster", "bind_address":"0.0.0.0", "username": "admin", "password":"password", "port": 15984, "node_count": "3", "remote_node": "<remote-node-ip>", "remote_current_user": "<remote-node-username>", "remote_current_password": "<remote-node-password>" }'''
+    #     - 'curl -X POST -H "Content-Type: application/json" http://admin:password@localhost:5984/_cluster_setup -d ''{"action": "add_node", "host":"<remote-node-ip>", "port": "<remote-node-port>", "username": "admin", "password":"password"}'''
+  # isolate couch1 container
+  event2:
+    dependOn: ["join_couches"]
     cut:
       container: ["couch1", "couch2"]
     cut:
