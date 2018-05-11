@@ -211,6 +211,15 @@ def getMapKey(containerList):
         result = result + container + ";"
     return result
 
+def getNetwork(key):
+    return networks[key]
+
+def showNetworkKeys():
+    with open('networkkeys.txt', 'w') as file:
+        file.write('here i am')
+        for key in networks:
+            file.write("key: " + key)
+
 def executeNetemCommandsForNetwork(actionObject, dockerComposeProjectName, command, arguments):
     networkList = convertToContainerNames(actionObject["network"], dockerComposeProjectName)
     networkKey = getMapKey(networkList)
